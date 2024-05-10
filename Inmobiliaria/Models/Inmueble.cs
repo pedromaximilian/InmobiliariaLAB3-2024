@@ -21,6 +21,11 @@ namespace Inmobiliaria.Models
         [MaxLength(15)]
         public int Uso { get; set; }
         public double Precio { get; set; }
+
+        public bool Activo { get; set; }
+
+        public string? Foto { get; set; }
+
         [Display(Name = "Dueño")]
         public int PropietarioId { get; set; }
         [ForeignKey(nameof(PropietarioId))]

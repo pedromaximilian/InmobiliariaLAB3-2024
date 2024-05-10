@@ -11,5 +11,6 @@ namespace Inmobiliaria.Context
         }
 
         public DbSet<Propietario> Propietarios { get; set; }
+        public DbSet<Inmueble> Inmuebles { get; set; }
     }
 }
