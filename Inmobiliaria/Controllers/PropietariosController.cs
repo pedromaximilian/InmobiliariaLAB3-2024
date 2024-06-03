@@ -7,56 +7,75 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Inmobiliaria.Context;
 using Inmobiliaria.Models;
+using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+using System.Security.Claims;
+using Inmobiliaria.Models.DTOs;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Inmobiliaria.Controllers
 {
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     [Route("api/[controller]")]
     [ApiController]
     public class PropietariosController : ControllerBase
     {
+        private readonly IConfiguration _config;
         private readonly MyContext _context;
 
-        public PropietariosController(MyContext context)
+        public PropietariosController(MyContext context, IConfiguration config)
         {
             _context = context;
+            _config = config;
         }
 
-        // GET: api/Propietarios
+
+
+        // GET: api/Propietarios/
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Propietario>>> GetPropietarios()
+        public async Task<ActionResult<Propietario>> GetPropietario()
         {
-            return await _context.Propietarios.ToListAsync();
-        }
+            var id = int.Parse(User.FindFirstValue("Id"));
 
-        // GET: api/Propietarios/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Propietario>> GetPropietario(int id)
-        {
+            if (id == null)
+            {
+                return BadRequest();
+            }
             var propietario = await _context.Propietarios.FindAsync(id);
 
             if (propietario == null)
             {
                 return NotFound();
             }
-
+            propietario.Password = "";
             return propietario;
         }
 
-        // PUT: api/Propietarios/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutPropietario(int id, Propietario propietario)
+        // PUT: api/Propietarios/
+
+        [HttpPut]
+        public async Task<IActionResult> PutPropietario([FromBody] PropietarioDTO propietarioDTO)
         {
-            if (id != propietario.Id)
+            var id = int.Parse(User.FindFirstValue("Id"));
+            if (id == null)
             {
                 return BadRequest();
             }
 
-            _context.Entry(propietario).State = EntityState.Modified;
+            var loggedPropietario = _context.Propietarios.AsNoTracking().FirstOrDefault(x => x.Id == id);
+            loggedPropietario.Apellido = propietarioDTO.Apellido;
+            loggedPropietario.Nombre = propietarioDTO.Nombre;
+            loggedPropietario.Dni = propietarioDTO.Dni;
+            loggedPropietario.Email = propietarioDTO.Email;
+            loggedPropietario.Telefono = propietarioDTO.Telefono;
+
+            _context.Entry(loggedPropietario).State = EntityState.Modified;
 
             try
             {
                 await _context.SaveChangesAsync();
+                loggedPropietario.Password = "";
+                return Ok(loggedPropietario);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -73,32 +92,49 @@ namespace Inmobiliaria.Controllers
             return NoContent();
         }
 
-        // POST: api/Propietarios
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<Propietario>> PostPropietario(Propietario propietario)
-        {
-            _context.Propietarios.Add(propietario);
-            await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetPropietario", new { id = propietario.Id }, propietario);
-        }
 
-        // DELETE: api/Propietarios/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeletePropietario(int id)
+        [HttpPut("updatePass")]
+        public async Task<IActionResult> ChangePassword([FromBody] String pass)
         {
-            var propietario = await _context.Propietarios.FindAsync(id);
-            if (propietario == null)
+            var id = int.Parse(User.FindFirstValue("Id"));
+            if (id == null)
             {
-                return NotFound();
+                return BadRequest();
             }
 
-            _context.Propietarios.Remove(propietario);
-            await _context.SaveChangesAsync();
+            var loggedPropietario = _context.Propietarios.AsNoTracking().FirstOrDefault(x => x.Id == id);
+
+            loggedPropietario.Password = Convert.ToBase64String(KeyDerivation.Pbkdf2(
+                password: pass,
+                salt: System.Text.Encoding.ASCII.GetBytes(_config["Salt"]),
+                prf: KeyDerivationPrf.HMACSHA1,
+                iterationCount: 1000,
+                numBytesRequested: 256 / 8));
+
+            _context.Entry(loggedPropietario).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                loggedPropietario.Password = "";
+                return Ok("Succes");
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!PropietarioExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
 
             return NoContent();
         }
+
 
         private bool PropietarioExists(int id)
         {

@@ -1,10 +1,13 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Inmobiliaria.Models
 {
     public class Propietario
     {
         [Key]
+        [JsonIgnore]
         [Display(Name = "ID")]
         public int Id { get; set; }
         [Required]
@@ -22,7 +25,7 @@ namespace Inmobiliaria.Models
         [Required, EmailAddress]
         [MaxLength(320)]
         public string Email { get; set; }
-        [Required, DataType(DataType.Password)]
+        [Required]
         public string Password { get; set; }
 
         public override string ToString()

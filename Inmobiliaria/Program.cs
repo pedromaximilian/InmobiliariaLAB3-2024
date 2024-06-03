@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
@@ -35,7 +36,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 if (!string.IsNullOrEmpty(accessToken) &&
                     (path.StartsWithSegments("/chatsegurohub") ||
                     path.StartsWithSegments("/api/propietarios/reset") ||
-                    path.StartsWithSegments("/api/propietarios/token")))
+                    path.StartsWithSegments("/api/propietario/inmuebles")))
                 {//reemplazar las urls por las necesarias ruta ⬆
                     context.Token = accessToken;
                 }
@@ -47,7 +48,33 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Your API", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                Array.Empty<string>()
+            }
+        });
+});
 
 var app = builder.Build();
 
@@ -55,10 +82,23 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.DefaultModelsExpandDepth(-1); // Evita la expansión automática de modelos
+        c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None); // Evita que los modelos estén expandidos por defecto
+        c.InjectStylesheet("/swagger-ui/custom.css"); // Agrega un archivo CSS personalizado si es necesario
+        c.EnableDeepLinking(); // Habilita los enlaces profundos
+        c.EnableValidator(); // Habilita el validador de Swagger
+        c.DisplayRequestDuration(); // Muestra la duración de las solicitudes
+        c.EnableFilter(); // Habilita la función de filtro en Swagger
+        c.ShowExtensions(); // Muestra las extensiones en Swagger UI
+
+    });
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 
