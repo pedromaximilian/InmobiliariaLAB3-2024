@@ -34,9 +34,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 // Si el request es para el Hub u otra ruta seleccionada...
                 var path = context.HttpContext.Request.Path;
                 if (!string.IsNullOrEmpty(accessToken) &&
-                    (path.StartsWithSegments("/chatsegurohub") ||
-                    path.StartsWithSegments("/api/propietarios/reset") ||
-                    path.StartsWithSegments("/api/propietario/inmuebles")))
+                    (path.StartsWithSegments("/api/Auth/restoredPassword")))
                 {//reemplazar las urls por las necesarias ruta ⬆
                     context.Token = accessToken;
                 }

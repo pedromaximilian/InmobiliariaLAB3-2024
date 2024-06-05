@@ -1,6 +1,8 @@
-﻿using Inmobiliaria.Context;
+﻿using Azure.Core;
+using Inmobiliaria.Context;
 using Inmobiliaria.Models;
 using MailKit.Net.Smtp;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.AspNetCore.Http;
@@ -20,6 +22,7 @@ using System.Text;
 namespace Inmobiliaria.Controllers
 {
     [Route("api/[controller]")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     [ApiController]
     public class AuthController : ControllerBase
     {
@@ -85,9 +88,7 @@ namespace Inmobiliaria.Controllers
         {
             try
             {
-                var id = int.Parse(User.FindFirstValue("Id"));
-
-                var propietario = await _context.Propietarios.FirstOrDefaultAsync(x => x.Id == id);
+                var propietario = await _context.Propietarios.FirstOrDefaultAsync(x => x.Email == email);
                 if (propietario == null)
                 {
                     return NotFound();
@@ -96,9 +97,7 @@ namespace Inmobiliaria.Controllers
                 var credenciales = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
                 var claims = new List<Claim>
                 {
-                    new Claim(ClaimTypes.Name, propietario.Email),
-                    new Claim("FullName", $"{propietario.Nombre} {propietario.Apellido}"),
-                    new Claim(ClaimTypes.Role, "Usuario"),
+                    new Claim("Id", propietario.Id.ToString()),
                 };
                 var token = new JwtSecurityToken(
                     issuer: _config["TokenAuthentication:Issuer"],
@@ -158,7 +157,7 @@ namespace Inmobiliaria.Controllers
                     prf: KeyDerivationPrf.HMACSHA1,
                     iterationCount: 1000,
                     numBytesRequested: 256 / 8));
-                var p = await _context.Propietarios.FirstOrDefaultAsync(x => x.Id ==  int.Parse(User.FindFirstValue("Id")));
+                var p = await _context.Propietarios.FirstOrDefaultAsync(x => x.Id == int.Parse(User.FindFirstValue("Id")));
                 if (p == null)
                 {
                     return BadRequest("Nombre de usuario incorrecto");
